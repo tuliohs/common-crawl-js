@@ -5,12 +5,14 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node indexing-scrapy.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.21.1",
     "commoncrawl": "^1.0.1",
+    "https": "^1.0.0",
     "node-warc": "^3.3.1"
   }
 }
