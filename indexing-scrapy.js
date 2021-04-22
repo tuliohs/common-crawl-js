@@ -7,7 +7,6 @@ const axios = require("axios");
 let entries = 0;
 let matchingEntries = 0;
 let hits = 0;
-let arrayTemp = []
 async function iterateRecords(warcStream) {
     for await (const record of recordIterator(warcStream)) {
         if (
@@ -19,31 +18,43 @@ async function iterateRecords(warcStream) {
 
         entries++;
         const string = record.content.toString(); //toString("utf-8");
+        if (!string)
+            continue;
+
         let found = string.indexOf('forget') > 0
 
         if (found) {
             matchingEntries++;
-            //console.log(record.warcTargetURI)
-            await scrapyAnalise(string)
+
+            await scrapyAnalise(string, record.warcTargetURI)
         }
     }
 }
 
-async function scrapyAnalise(html) {
-    await axios.post("http://127.0.0.1:5000/extraction", {
-        url: null,
-        html: html
-    }).then(c => {
-        console.log(c.data)
-        localJsonPush(c.data)
-    })
+const scrapyAnalise = async (html, url) => {
+    let header = {
+        'Content-Type': 'application/json',
+        'Content-Length': html.length
+    }
+    await axios.post("http://127.0.0.1:5000/extraction", { url: url, html: html }, header)
+        .then(c => localJsonPush(c.data))
         .catch(e => console.log("err -> ", e))
 }
 
-function localJsonPush(json) {
-    arrayTemp.push(json)
-    JSON.stringify(arrayTemp)
-    fs.writeFile('myjsonfile.json', json, 'utf8', (e) => console.log(e));
+async function localJsonPush(json) {
+    const lang = await axios.post("http://127.0.0.1:5000/lang", { text: json.content })
+    if (lang?.data !== "en")
+        return console.log(lang.data, ' is not english')
+
+    let novoItem = json //Object.assign(json, { url: url });
+    fs.readFile('myjsonfile.json', 'utf8', function readFileCallback(err, data) {
+        if (err) { console.log(err); } else {
+            obj = JSON.parse(data); //now it an object
+            obj.push(novoItem); //add some data
+            novoJson = JSON.stringify(obj); //convert it back to json
+            fs.writeFile('myjsonfile.json', novoJson, 'utf8', () => { }); // write it back 
+        }
+    });
 }
 
 const fileName = "http://commoncrawl.s3.amazonaws.com/crawl-data/CC-MAIN-2019-30/segments/1563195523840.34/warc/CC-MAIN-20190715175205-20190715200159-00000.warc.gz";
