@@ -13,6 +13,7 @@
     "axios": "^0.21.1",
     "commoncrawl": "^1.0.1",
     "https": "^1.0.0",
+    "neo4j-driver": "^4.2.3",
     "node-warc": "^3.3.1"
   }
 }
