@@ -18,6 +18,15 @@ async function localJsonPush() {
             let resume = []
             let erros = 0
 
+            //Neo4j variables
+            const keyName_page = 'pagesN'
+            const keyName_keyword = 'keywordsN'
+            const relatName = 'by_keywordsN'
+            //create constanst if not existis
+            await neo4j.execute(`CREATE CONSTRAINT IF NOT EXISTS ON (p:${keyName_page}) ASSERT p.hostname IS UNIQUE;`)
+            await neo4j.execute(`CREATE CONSTRAINT IF NOT EXISTS ON (m:${keyName_keyword}) ASSERT m.name IS UNIQUE;`)
+
+
             //percorre o array
             for (c of obj) {
                 let hot_words = c?.keywords
@@ -48,24 +57,37 @@ async function localJsonPush() {
                                 if (!c?.keyword_similarity)
                                     c.keyword_similarity = []
 
-                                const keyName = 'Page'
-                                const pageid = 'a${x.id.split(' - ')[0]}a'
-                                const query = ` CREATE (${pageid}:${keyName}{hostname:'${hostname.hostname}'})`
+                                //inside string
+                                const pageid = `A${hostname.hostname}`.replaceAll('.', '')
+                                //Salva a page
+                                const query = `CREATE (${pageid}:${keyName_page}{hostname:'${hostname.hostname}'});`
                                 await neo4j.execute(query)
-                                //await neo4j.execute(`CREATE INDEX ON :Page(url);`)
 
                                 for (var el of intersection) {
-                                    const keyNamek = 'Keyword'
-                                    const queryk = ` CREATE ( ${el}:${keyNamek}{name:'${el}'})`
+                                    //salva a keyword
+                                    const queryk = `CREATE (${el}:${keyName_keyword} {name:'${el}'});`
                                     await neo4j.execute(queryk)
 
-                                    const queryr = ` CREATE (${el})-[:BY_KEYWORD]->(${pageid}) `
-                                    await neo4j.execute(queryr)
+                                    //relaciona a keyword com a pagina (Não funcionou diretamente)
+                                    //const queryr = `CREATE (${el})-[:${relatName}]->(${pageid})`
 
-
-                                    const queryp = ` CREATE (${pageid})-[:KEYWORD_IN {by:['${el}']}]->(${el}) `
-                                    await neo4j.execute(queryp)
-
+                                    try {
+                                        const queryRelatExist = `
+                                        MATCH (a:${keyName_keyword}), (b:${keyName_page}) WHERE a.name ='${el}' AND b.hostname='${hostname.hostname}'   
+                                        RETURN  exists((a)-[:${relatName}]->(b) )                                      
+                                        `
+                                        //verify if already exist
+                                        const result = await neo4j.executeOut(queryRelatExist)
+                                        if (!result.records.map(record => record.get(0))[0]) {
+                                            //forçando o relacionamento com match
+                                            const queryCreateRelat = `
+                                            MATCH (a:${keyName_keyword}), (b:${keyName_page}) WHERE a.name ='${el}' AND b.hostname='${hostname.hostname}'   
+                                            CREATE (a)-[:${relatName}]->(b) RETURN a,b                                       
+                                            `
+                                            await neo4j.execute(queryCreateRelat)
+                                        }
+                                        //relacionando com match para forçar o relacionamento
+                                    } catch (e) { console.error('error in relationship', e) }
                                 }
 
                                 c.keyword_similarity.push({
