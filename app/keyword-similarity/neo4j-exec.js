@@ -41,25 +41,7 @@ exports.executeOut = async (query) => {//}, params = null }) {
   const session = driver.session({ database: "neo4j" });
 
   return await session.run(query)
-
-  //var writeTxResultPromise = 
-  session.writeTransaction(async txc => {
-    // used transaction will be committed automatically, no need for explicit commit/rollback
-
-    var result = await txc.run(query)
-    // at this point it is possible to either return the result or process it and return the
-    // result of processing it is also possible to run more statements in the same transaction
-    return result.records.map(record => record.get('exist'))
-  })
-
-
-  //.finally(() => {
-  //  session.close();
-  //  driver.close();
-  //})
 }
-
-
 
 
 //const query = "CREATE CONSTRAINT ON (p:Page) ASSERT p.id IS UNIQUE;"// MATCH (n:Person) RETURN n LIMIT 2500"
